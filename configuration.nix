@@ -7,6 +7,7 @@
   pkgs,
   pkgsUnstable,
   inputs,
+  lib,
   ...
 }:
 
@@ -33,6 +34,44 @@ let
       DisableFirefoxAccounts = true;
     };
   };
+  kisesi = pkgs.python3Packages.buildPythonPackage rec {
+    pname = "kisesi";
+    version = "0.4.1";
+    pyproject = true;
+
+    build-system = [ pkgs.python3Packages.hatchling ];
+
+    src = pkgs.fetchFromGitHub {
+      owner = "eeriemyxi";
+      repo = "kisesi";
+      rev = "v${version}";
+      sha256 = "sha256-XfGwx/+zY8l0pCfuiuZZWKrHKano2KNiW8zvlZtNGGc=";
+    };
+
+  };
+
+  mechvibes-lite = pkgs.python3Packages.buildPythonPackage rec {
+    pname = "mechvibes-lite";
+    version = "0.4.1";
+    pyproject = true;
+
+    build-system = [ pkgs.python3Packages.hatchling ];
+
+    src = pkgs.fetchFromGitHub {
+      owner = "eeriemyxi";
+      repo = "mechvibes-lite";
+      rev = "v${version}";
+      sha256 = "sha256-7xN9g139FB0Ok+jKwqYyR/QdWyjyZmapaTE4heF++4o=";
+    };
+
+    dependencies = with pkgs.python3Packages; [
+      kisesi
+      evdev
+      click
+      pyglet
+      websockets
+    ];
+  };
 in
 {
   imports = [
@@ -50,61 +89,59 @@ in
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # Kernel
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.initrd.kernelModules = [ "amdgpu" ];
+  # boot.extraModprobeConfig = ''
+  # 	options mt7921e disable_aspm=1
+  # 	options mt76_connac_lib disable_lp=1
+  # '';
+
+  # Hardware
+  hardware.enableRedistributableFirmware = true;
+
   networking.hostName = "btw"; # Define your hostname.
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  networking.wireless.enable = lib.mkForce false;
+  networking.extraHosts = ''
+    3.122.172.136 alice.licelus.com
+  '';
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
+  # iwd
+  #  networking.wireless.iwd.enable = true;
+  #  networking.wireless.iwd.settings = {
+  #  	General = {
+  #  		AddressRandomization = "none";
+  #  		RoamThreshold = -70;
+  #  		RoamThreshold5G = -75;
+  #  	};
+  #    IPv6 = {
+  #      Enabled = true;
+  #    };
+  #    Settings = {
+  #      AutoConnect = false;
+  #    };
+  #    Scan = {
+  #    	    DisableRoamingScan = true;
+  # };
+  #  };
+
   # Enable networking
   networking.networkmanager.enable = true;
-  networking.resolvconf.enable = true;
-  networking.resolvconf.useLocalResolver = true;
-  services.blocky = {
-    enable = true;
-    settings = {
-      ports.dns = 53; # Port for incoming DNS Queries.
-      upstreams.groups.default = [
-        "https://one.one.one.one/dns-query"
-      ];
-      # For initially solving DoH/DoT Requests when no system Resolver is available.
-      bootstrapDns = {
-        upstream = "https://one.one.one.one/dns-query";
-        ips = [
-          "1.1.1.1"
-          "1.0.0.1"
-        ];
-      };
-      #Enable Blocking of certain domains.
-      blocking = {
-        denylists = {
-          #Adblocking
-          ads = [
-            "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-            "https://raw.githubusercontent.com/r-a-y/mobile-hosts/master/AdguardDNS.txt"
-            "https://adaway.org/hosts.txt"
-            "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=1&mimetype=plaintext"
-          ];
-          #Another filter for blocking adult sites
-          adult = [ "https://blocklistproject.github.io/Lists/porn.txt" ];
-          #You can add additional categories
-        };
-        #Configure what block categories are used
-        clientGroupsBlock = {
-          default = [ "ads" ];
-          kids-ipad = [
-            "ads"
-            "adult"
-          ];
-        };
-      };
-    };
+  networking.networkmanager.wifi = {
+    powersave = false;
+    backend = "iwd";
+    macAddress = "stable";
   };
-
-  # Enable KVM
-  virtualisation.virtualbox.host.enableKvm = true;
-  virtualisation.libvirtd.enable = true;
+  networking.resolvconf.enable = true;
+  # networking.resolvconf.useLocalResolver = true;
+  #services.tor = {
+  #  enable = true;
+  #  client.enable = true; # This is the missing piece!
+  #};
 
   nix.settings.experimental-features = [
     "nix-command"
@@ -113,6 +150,7 @@ in
 
   # Set your time zone.
   time.timeZone = "Asia/Kolkata";
+  # services.timesyncd.enable = false;
 
   # Select internationalisation properties.
   i18n.defaultLocale = "en_IN";
@@ -137,17 +175,25 @@ in
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
   services.gnome.core-apps.enable = false;
+  services.gnome.gnome-keyring.enable = true;
 
   # Environment variables
   environment.sessionVariables = rec {
     ANDROID_HOME = "$HOME/Android/Sdk";
     NIXOS_OZONE_WL = "1";
+    PODMAN_COMPOSE_WARNING_LOGS = "false";
     PATH = [
       "$HOME/Android/flutter/bin"
+      "$HOME/.local/bin"
       "${ANDROID_HOME}/platform-tools"
-      "${ANDROID_HOME}/build-tools/36.0.0"
+      "${ANDROID_HOME}/build-tools/36.1.0"
       "${ANDROID_HOME}/cmdline-tools/latest/bin"
     ];
+  };
+  environment.variables = {
+    EDITOR = "hx";
+    VISUAL = "hx";
+    LADSPA_PATH = "/run/current-system/sw/lib/ladspa";
   };
 
   services.fprintd.enable = true;
@@ -191,13 +237,18 @@ in
       dockerCompat = true;
       # Required for containers under podman-compose to be able to talk to each other.
       defaultNetwork.settings.dns_enabled = true;
+      extraPackages = [
+        pkgs.podman-compose
+      ];
     };
     virtualbox = {
+      host.enableKvm = true;
       host.enable = true;
       host.addNetworkInterface = false;
       guest.clipboard = true;
       guest.dragAndDrop = true;
     };
+    libvirtd.enable = true;
   };
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
@@ -208,10 +259,30 @@ in
       "networkmanager"
       "wheel"
       "podman"
+      "video"
+      "render"
+      "input"
     ];
-    packages = with pkgs; [
+    packages = [
       pkgsUnstable.telegram-desktop
     ];
+  };
+
+  systemd.user.services.mechvibes-lite = {
+    description = "Mechvibes Lite Daemon";
+    # Wait for the graphical session and audio server (Pipewire) to be ready
+    after = [
+      "graphical-session.target"
+      "pipewire.service"
+    ];
+    wantedBy = [ "graphical-session.target" ];
+
+    serviceConfig = {
+      # This dynamically points to the correct binary in the Nix store
+      ExecStart = "${mechvibes-lite}/bin/mvibes daemon";
+      Restart = "on-failure";
+      RestartSec = "5s";
+    };
   };
 
   # Install programs
@@ -224,7 +295,7 @@ in
     blesh.enable = true;
     shellAliases = {
       cd = "z";
-      rebuild = "sudo nixos-rebuild switch --flake /etc/nixos#abhi";
+      rebuild = "nh os switch";
       reboot = "sudo reboot";
       cat = "bat";
       vi = "hx";
@@ -233,17 +304,30 @@ in
       ":q" = "exit";
       wget = "wget -q --show-progress";
       jjar = "java -jar";
+      scrcpy = "scrcpy --render-driver=opengl";
     };
+    interactiveShellInit = ''
+      nsu() {
+        if [ $# -eq 0 ]; then
+          echo "Usage: nsu <package-name>"
+          return 1
+        fi
+        NIXPKGS_ALLOW_UNFREE=1 nix shell --impure "github:NixOS/nixpkgs/nixos-unstable#$1"
+      }
+    '';
     promptInit = ''
-      	  PROMPT_COMMAND='PS1_CMD1=$(git branch --show-current 2>/dev/null)'; PS1='\[\e[38;5;39m\] \[\e[0m\]\[\e[38;5;46m\]┬─[\[\e[38;5;226m\]\u\[\e[0m\]@\[\e[38;5;33m\]\h\[\e[0m\]:\w\[\e[38;5;46m\]]─[\[\e[38;5;46m\]''${PS1_CMD1}]\n\[\e[38;5;46m\]╰─>\[\e[0m\] '
-      	'';
+      : "$PROMPT_COMMAND:="
+
+      # Only append our git‑branch bit at the *front*
+      PROMPT_COMMAND='PS1_CMD1=$(git branch --show-current 2>/dev/null); '"$PROMPT_COMMAND"
+
+      PS1='\[\e[38;5;39m\] \[\e[0m\]\[\e[38;5;46m\]┬─[\[\e[38;5;226m\]\u\[\e[0m\]@\[\e[38;5;33m\]\h\[\e[0m\]:\w\[\e[38;5;46m\]]─[\[\e[38;5;46m\]$PS1_CMD1]\n\[\e[38;5;46m\]╰─>\[\e[0m\] '
+    '';
     shellInit = ''
-        	  eval "$(direnv hook bash)"
-        	  _ZO_DOCTOR=0
-        	  # Wasmer
-      	  export WASMER_DIR="/home/abhi/.wasmer"
-      	  [ -s "$WASMER_DIR/wasmer.sh" ] && source "$WASMER_DIR/wasmer.sh"
-        	'';
+      _ZO_DOCTOR=0
+      export WASMER_DIR="/home/abhi/.wasmer"
+      [ -s "$WASMER_DIR/wasmer.sh" ] && source "$WASMER_DIR/wasmer.sh"
+    '';
   };
   programs.zoxide.enable = true;
   programs.bat.enable = true;
@@ -254,7 +338,6 @@ in
     package = pkgs.direnv;
     silent = true;
     loadInNixShell = false;
-    direnvrcExtra = "";
     nix-direnv = {
       enable = true;
       package = pkgs.nix-direnv;
@@ -273,6 +356,12 @@ in
       obs-advanced-masks
       droidcam-obs
     ];
+  };
+  programs.nh = {
+    enable = true;
+    clean.enable = true;
+    clean.extraArgs = "--keep-since 4d --keep 3";
+    flake = "/etc/nixos";
   };
 
   # Allow unfree packages
@@ -297,7 +386,7 @@ in
     distrobox
     jdk17
     fixPythonPkg
-    android-studio
+    pkgsUnstable.android-studio
     distrobox
     eza
     bun
@@ -324,7 +413,6 @@ in
         hash = "sha256-j/CAIr46DvaTqePqAQENE1aybP3Lvn/daNAbPJcA+eI=";
       };
     })
-    pkgsUnstable.radare2
     cutter
     iaito
     jadx
@@ -338,11 +426,11 @@ in
     # GNOME APPS
     nautilus
     gnome-calculator
-    blackbox-terminal
+    # blackbox-terminal
     gnome-disk-utility
     gnome-tweaks
     gnome-console
-    gnome-text-editor
+    # gnome-text-editor
     gnome-system-monitor
     fragments
     switcheroo
@@ -368,15 +456,23 @@ in
     gnomeExtensions.open-bar
     gnomeExtensions.emoji-copy
     gnomeExtensions.appindicator
-    gnomeExtensions.tiling-shell
+    # gnomeExtensions.tiling-shell
+    gnomeExtensions.utcclock
 
     # OTHER
-    peazip
-    proton-pass
+    kdePackages.ark
     handbrake
-    pkgsUnstable.opencode
     pkgsUnstable.zed-editor-fhs
     zenBrowser
+    logseq
+    onlyoffice-desktopeditors
+    upscayl
+    easyeffects
+    deepfilternet
+    # bucklespring-libinput
+    mechvibes-lite
+    pkgsUnstable.proton-vpn-cli
+    pkgsUnstable.ghostty
 
     # Python
     python3
@@ -387,6 +483,14 @@ in
     maple-mono.NF-CN
     noto-fonts-color-emoji
   ];
+
+  #services.ollama = {
+  #  	enable = true;
+  #  	package = pkgsUnstable.ollama-rocm;
+  #
+  #  	rocmOverrideGfx = "9.0.0";
+  #};
+
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
   # programs.mtr.enable = true;

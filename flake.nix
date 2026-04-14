@@ -31,7 +31,7 @@
       system = "x86_64-linux";
     in
     {
-      nixosConfigurations.abhi = lib.nixosSystem {
+      nixosConfigurations.btw = lib.nixosSystem {
 
         specialArgs = {
           inherit inputs;
