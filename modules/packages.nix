@@ -41,6 +41,7 @@
       onlyoffice-desktopeditors
       upscayl
       mechvibes-lite
+      bunnylol
       python3
       python3Packages.pip
 

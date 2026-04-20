@@ -17,4 +17,16 @@
       RestartSec = "5s";
     };
   };
+
+  systemd.user.services.bunnylol = {
+    description = "bunnylol Smart Bookmark Server";
+    after = [ "network.target" ];
+    wantedBy = [ "default.target" ];
+
+    serviceConfig = {
+      ExecStart = "${pkgs.bunnylol}/bin/bunnylol serve";
+      Restart = "on-failure";
+      RestartSec = "3s";
+    };
+  };
 }

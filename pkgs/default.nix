@@ -13,6 +13,7 @@ let
   fix-python = inputs.fix-python.packages.${system}.default;
   radare2 = pkgs.callPackage ./radare2.nix { };
   iaito = pkgs.callPackage ./iaito.nix { inherit radare2; };
+  bunnylol = pkgs.callPackage ./bunnylol.nix { };
 in
 {
   kisesi = kisesi;
@@ -21,4 +22,5 @@ in
   fixPythonPkg = fix-python;
   radare2 = radare2;
   iaito = iaito;
+  bunnylol = bunnylol;
 }
