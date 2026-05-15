@@ -15,6 +15,7 @@
       "${ANDROID_HOME}/cmdline-tools/latest/bin"
       "$HOME/.opencode/bin"
       "$HOME/.cargo/bin"
+      "$HOME/.bun/bin"
       "$WASMER_DIR/bin"
     ];
   };

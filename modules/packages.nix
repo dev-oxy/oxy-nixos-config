@@ -33,6 +33,7 @@
       frida-tools
       burpsuite
       imhex
+      ida-pro
       apple-cursor
       kdePackages.ark
       handbrake
@@ -44,13 +45,6 @@
       bunnylol
       python3
       python3Packages.pip
-
-      (callPackage ida-pro {
-        runfile = fetchurl {
-          url = "https://pintobyte.com/tmp/ida-pro_91_x64linux.run";
-          hash = "sha256-j/CAIr46DvaTqePqAQENE1aybP3Lvn/daNAbPJcA+eI=";
-        };
-      })
     ]
     ++ (with pkgsUnstable; [
       android-studio
