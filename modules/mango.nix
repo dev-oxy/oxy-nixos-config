@@ -1,0 +1,156 @@
+{ config, pkgs, inputs, ... }:
+
+let
+  system = pkgs.stdenv.hostPlatform.system;
+in
+{
+  imports = [
+    inputs.mangowm.nixosModules.mango
+  ];
+
+  programs.mango.enable = true;
+
+  services.greetd = {
+    enable = true;
+    settings = {
+      initial_session = {
+        command = "mango";
+        user = "abhi";
+      };
+      default_session = {
+        command = "${pkgs.tuigreet}/bin/tuigreet --cmd mango";
+        user = "greeter";
+      };
+    };
+  };
+
+  services.gnome.gnome-keyring.enable = true;
+
+  hardware.bluetooth.enable = true;
+  services.upower.enable = true;
+  services.power-profiles-daemon.enable = true;
+
+  xdg.terminal-exec.enable = true;
+  xdg.terminal-exec.settings.default = [ "org.wezfurlong.wezterm.desktop" ];
+
+  environment.systemPackages = with pkgs; [
+    inputs.noctalia.packages.${system}.default
+
+    nautilus
+    gnome-disk-utility
+  ];
+
+environment.etc."mango/config.conf".text = ''
+    cursor_size=32
+    cursor_theme=macOS
+    trackpad_natural_scrolling=1
+    border_radius=8
+    borderpx=2
+    focuscolor=0x5e81acff
+    drag_tile_to_tile=1
+    exec-once=noctalia
+
+    bind=Super,Return,spawn,wezterm
+    bind=Super,b,spawn,zen
+    bind=Alt,Q,killclient
+    bind=Super,M,quit
+    bind=Super,F,togglefullscreen
+    bind=Super,R,setkeymode,resize
+    bind=Alt,Tab,focusstack,next
+    bind=Shift+Alt,Tab,focusstack,prev
+    bind=Alt+Shift,Left,exchange_client,left
+    bind=Alt+Shift,Right,exchange_client,right
+    bind=Alt+Shift,Up,exchange_client,up
+    bind=Alt+Shift,Down,exchange_client,down
+    bind=Ctrl,1,view,1
+    bind=Ctrl,2,view,2
+    bind=Ctrl,3,view,3
+    bind=Ctrl,4,view,4
+    bind=Ctrl,5,view,5
+    bind=Ctrl,6,view,6
+    bind=Ctrl,7,view,7
+    bind=Ctrl,8,view,8
+    bind=Ctrl,9,view,9
+    bind=Alt,1,tag,1
+    bind=Alt,2,tag,2
+    bind=Alt,3,tag,3
+    bind=Alt,4,tag,4
+    bind=Alt,5,tag,5
+    bind=Alt,6,tag,6
+    bind=Alt,7,tag,7
+    bind=Alt,8,tag,8
+    bind=Alt,9,tag,9
+
+    bind=SUPER,space,spawn,noctalia msg panel-toggle launcher
+    bind=SUPER,d,spawn,noctalia msg panel-toggle launcher
+    bind=SUPER,s,spawn,noctalia msg panel-toggle control-center
+    bind=SUPER,comma,spawn,noctalia msg settings-toggle
+
+    bind=NONE,XF86AudioRaiseVolume,spawn,noctalia msg volume-up
+    bind=NONE,XF86AudioLowerVolume,spawn,noctalia msg volume-down
+    bind=NONE,XF86AudioMute,spawn,noctalia msg volume-mute
+    bind=NONE,XF86AudioMicMute,spawn,noctalia msg mic-mute
+    bind=NONE,XF86MonBrightnessUp,spawn,noctalia msg brightness-up
+    bind=NONE,XF86MonBrightnessDown,spawn,noctalia msg brightness-down
+    bind=NONE,Print,spawn,noctalia msg screenshot-region
+    bind=SHIFT,Print,spawn,noctalia msg screenshot-fullscreen
+
+    keymode=resize
+    bind=NONE,Left,resizewin,-20,0
+    bind=NONE,Right,resizewin,+20,0
+    bind=NONE,Up,resizewin,0,-20
+    bind=NONE,Down,resizewin,0,+20
+    bind=NONE,Escape,setkeymode,default
+    bind=NONE,Return,setkeymode,default
+
+    keymode=default
+  '';
+
+  environment.etc."noctalia/scripts/utc_clock.lua".text = ''
+    local show_utc = false
+
+    barWidget.define({
+        label = "UTC Toggle Clock",
+        icon = "clock",
+    })
+
+    function update()
+        if show_utc then
+            noctalia.runAsync("TZ=UTC date +'%H:%M  %Z'", function(result)
+                barWidget.setText(result.stdout:match("^%s*(.-)%s*$"))
+                barWidget.setTooltip("Right-click for local time")
+            end)
+        else
+            noctalia.runAsync("date +'%H:%M'", function(result)
+                barWidget.setText(result.stdout:match("^%s*(.-)%s*$"))
+                barWidget.setTooltip("Right-click for UTC time")
+            end)
+        end
+    end
+
+    function onRightClick()
+        show_utc = not show_utc
+    end
+  '';
+
+  environment.etc."noctalia/config.toml".text = ''
+    [widget.utc-clock]
+    type = "scripted"
+    script = "/etc/noctalia/scripts/utc_clock.lua"
+    hot_reload = true
+  '';
+
+  system.activationScripts.noctalia-config.text = ''
+    mkdir -p /home/abhi/.config/noctalia/scripts
+    cp /etc/noctalia/scripts/utc_clock.lua /home/abhi/.config/noctalia/scripts/utc_clock.lua
+    chown abhi:users /home/abhi/.config/noctalia/scripts/utc_clock.lua
+    cp /etc/noctalia/config.toml /home/abhi/.config/noctalia/config.toml
+    chown abhi:users /home/abhi/.config/noctalia/config.toml
+  '';
+
+  system.activationScripts.mango-config.text = ''
+    mkdir -p /home/abhi/.config/mango
+    cp /etc/mango/config.conf /home/abhi/.config/mango/config.conf
+    chown abhi:users /home/abhi/.config/mango/config.conf
+  '';
+}

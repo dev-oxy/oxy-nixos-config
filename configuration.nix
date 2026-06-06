@@ -16,7 +16,7 @@ in
     ./modules/hardware.nix
     ./modules/networking.nix
     ./modules/locale.nix
-    ./modules/gnome.nix
+    ./modules/mango.nix
     ./modules/audio.nix
     ./modules/fonts.nix
     ./modules/virtualization.nix
@@ -33,6 +33,8 @@ in
       "nix-command"
       "flakes"
     ];
+    extra-substituters = [ "https://noctalia.cachix.org" ];
+    extra-trusted-public-keys = [ "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4=" ];
   };
 
   nixpkgs.config.allowUnfree = true;
